@@ -1,0 +1,6 @@
+.env
+/app/node_modules
+mongo
+.git
+.gitignore
+.dockerignore
