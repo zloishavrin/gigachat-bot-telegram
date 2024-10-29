@@ -20,7 +20,7 @@ const startBot = () => {
                     User.create({ chatId, mode: 'GPT' });
                 }
     
-                await bot.sendMessage(chatId, 'Добро пожаловать в КарунаБот!', {
+                await bot.sendMessage(chatId, 'Добро пожаловать в GPTBot!\n\nЧем я могу Вам помочь?', {
                     reply_markup: {
                         keyboard: [
                             ['Сгенерировать ответ'],
@@ -33,26 +33,45 @@ const startBot = () => {
             else if(msg.text === 'Сгенерировать картинку') {
                 user.mode = 'IMG';
                 await user.save();
-                bot.sendMessage(chatId, 'Вы выбрали режим генерации картинок!');
+                bot.sendMessage(chatId, 'Вы выбрали режим генерации картинок!\n\nЧто вы хотите изобразить?');
             }
             else if(msg.text === 'Сгенерировать ответ') {
                 user.mode = 'GPT';
                 await user.save();
-                bot.sendMessage(chatId, 'Вы выбрали режим генерации ответов!');
+                bot.sendMessage(chatId, 'Вы выбрали режим генерации ответов!\n\nЧем я могу Вам помочь?');
             }
             else {
                 const waitMessage = await bot.sendMessage(chatId, 'Пожалуйста, подождите...');
                 if(user.mode === 'GPT') {
                     try {
                         const response = await openai.chat.completions.create({
-                            messages: [{ role: 'user', content: msg.text }],
-                            model: 'gpt-4',
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: user.lastMessage
+                                },
+                                {
+                                    role: 'assistant',
+                                    content: user.lastCompetion
+                                },
+                                { 
+                                    role: 'user', 
+                                    content: msg.text 
+                                }
+                            ],
+                            model: 'gpt-4o',
                         });
                         const answer = response.choices[0].message.content;
+
+                        user.lastMessage = msg.text;
+                        user.lastCompetion = answer;
+                        await user.save()
+
                         await bot.deleteMessage(chatId, waitMessage.message_id);
                         await bot.sendMessage(chatId, answer);
                     }
                     catch(error) {
+                        console.log(error);
                         await bot.deleteMessage(chatId, waitMessage.message_id);
                         await bot.sendMessage(chatId, 'Не удалось сгенерировать ответ.');
                     }
@@ -67,6 +86,7 @@ const startBot = () => {
                         await bot.sendPhoto(chatId, image.data.url);
                     }
                     catch(error) {
+                        console.log(error);
                         await bot.deleteMessage(chatId, waitMessage.message_id);
                         await bot.sendMessage(chatId, 'Не удалось сгенерировать ответ.');
                     }
